@@ -1,0 +1,64 @@
+version: "3.9"
+
+networks:
+  monitoring:
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+  mongodb_data: {}
+
+services:
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    restart: "always"
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_URL}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    networks:
+      - monitoring
+    volumes:
+      - mongodb_data:/data/db
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    ports:
+      - 9090:9090
+    expose:
+      - 9090
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - 3000:3000
+    expose:
+      - 3000
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+
+  nodejs-app:
+    container_name: nodejs-app
+    build: .
+    volumes:
+      - .:/usr/app
+    ports:
+      - 4000:4000
+    networks:
+      - monitoring
+    depends_on:
+      - grafana
+      - mongodb
